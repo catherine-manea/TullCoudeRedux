@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import matplotlib
 from astropy.table import Table
+from scipy import interpolate
 
 def fits_to_img(files):
     headers, datas, objs, dates, exps = np.empty(len(files), dtype=object), np.empty(len(files), dtype=object), \
@@ -109,7 +110,7 @@ def scatter_light_sub_and_order_trace(flat_frame):
     normed[np.where(normed == 0)] = np.nan
 
     print('\n Scattered light subtraction and order tracing complete.')
-    return normed, columns, order_centers, num_of_ords, orders, xx, yy
+    return normed, columns, order_centers, num_of_ords, orders, xx, yy, trough_s
 
 
 print("Redux.py successfully loaded in.")
@@ -142,7 +143,7 @@ print("Redux.py successfully loaded in.")
 # plt.close()
 #exit()
 
-def extract_obj_spec(data, obj, exp, bias_frame, flat_frame, orders, num_of_ords, stack_and_take_mean=False):
+def extract_obj_spec(data, obj, exp, bias_frame, flat_frame, orders, num_of_ords, trough_s, stack_and_take_mean=False):
     print("Extracting 1d spectrum of ", obj)
     xx, yy = np.meshgrid(np.arange(0,flat_frame.shape[1]), np.arange(0,flat_frame.shape[0]))
     if stack_and_take_mean == True:
@@ -150,6 +151,32 @@ def extract_obj_spec(data, obj, exp, bias_frame, flat_frame, orders, num_of_ords
     data = data - bias_frame
     data = data/exp
     data = data/flat_frame
+    # scat_lights = []
+    # for pix_column in range(2048):
+    #     flat_slice = data[:, pix_column]
+    #     troughs = trough_s[pix_column]
+    #
+    #     # scat = interpolate.interp1d(troughs, flat_slice[troughs][~np.isnan(flat_slice[troughs])])
+    #     # scat_light = scat(np.arange(500, 1000, 1))
+    #     if pix_column == 1100:
+    #         print(flat_slice[troughs])
+    #     # #plot one row to exemplify scattered light subtraction:
+    #     if pix_column == 1100: #1310 bad
+    #         fig, axs = plt.subplots(2,1,figsize=(8,8))
+    #         ax1 = axs[0]
+    #         ax2 = axs[1]
+    #         ax1.plot(flat_slice, color='gray')
+    #         # ax1.plot(scat_light)
+    #         # #ax1.plot(peaks, flat_slice[peaks], "x", color="blue")
+    #         # ax1.plot(troughs, np.repeat(.5e6, len(troughs)), "x", color="red")
+    #         # ax1.set_title("Scattered Light Subtraction (top panel = before, bottom = after)")
+    #         #ax2.plot(flat_slice - scat_light, color='gray')
+    #         #ax2.plot(peaks, flat_slice[peaks] - scat_light[peaks], "x", color="blue")
+    #         #ax2.plot(troughs, flat_slice[troughs] - scat_light[troughs], "x", color="red")
+    #         plt.show()
+    #     # #data[:, pix_column] = flat_slice - scat_light
+    #     # print("Scattered Light Subtraction: ", int(100*pix_column/2048), ' %', end='\r' )
+    # #data = np.array(data)
     waves = []
     fluxes = []
     for ord in range(num_of_ords):
@@ -286,3 +313,49 @@ def onclick(event):
 # plt.show()
 # plt.close()
 #print(str(ord)+str(coords[0][0])+ ' & ' +str(coords[1][0]))
+
+
+  # print 'Using Pythonic version of fix pix to deal with bad columns and pixels'
+  # fixpix('allflats',path = './',badpixel_mask = 'badpix.txt',sav=True)
+  # fixpix('biases',path = './',badpixel_mask = 'badpix.txt',sav=True)
+  # fixpix('arcs',path = './',badpixel_mask = 'badpix.txt',sav=True)
+  # fixpix('targets',path = './',badpixel_mask = 'badpix.txt',sav=True)
+  #
+
+
+# def fixpix(lst,path = './',badpixel_mask = 'badpix.txt',sav=False):
+#   import numpy as np
+#   ''' Input :
+#         lst = list of files to fix pix
+#         badpix.txt = bad pixel mask text file of Xstart Xend Ystart Yend
+#   '''
+#   files = np.atleast_1d(np.loadtxt(path+lst,dtype=str))
+#   badpixels = np.loadtxt(path+badpixel_mask,dtype=int)
+#   for i in range(len(files)):
+#     D = pyfits.open(path+files[i])
+#     dat1 = D[0].data
+#     M = np.full((np.shape(dat1)[0],np.shape(dat1)[1]),False)
+#     for j in range(len(badpixels)):
+#       M[badpixels[j][2]:badpixels[j][3],badpixels[j][0]:badpixels[j][1]] = True
+#     X = np.ma.array(dat1,mask=M)
+#     cleaned_fluxes = fixpix_baseroutine(X.data,X.mask)
+#     if sav == True:
+#       print 'Overwritting the file with fixed bad col/pixels'
+#       D[0].data = cleaned_fluxes
+#       D.writeto(path+files[i], overwrite=True)
+# def fixpix_baseroutine(data, mask, kind='linear'):
+#     """Interpolate 2D array data in rows"""
+#     import numpy as np
+#     from scipy.interpolate import interp1d
+#     if data.shape != mask.shape:
+#         raise ValueError
+#     if not np.any(mask):
+#         return data
+#     x = np.arange(0, data.shape[1])
+#     for row, mrow in zip(data, mask):
+#         if np.any(mrow):  # Interpolate if there's some pixel missing
+#             valid = (mrow == np.False_)
+#             invalid = (mrow == np.True_)
+#             itp = interp1d(x[valid], row[valid], kind=kind, copy=False)
+#             row[invalid] = itp(x[invalid]).astype(row.dtype)
+#     return data
